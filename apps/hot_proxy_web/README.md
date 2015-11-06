@@ -1,4 +1,4 @@
-hot_proxy
+hot_proxy_web
 =====
 
 An OTP application

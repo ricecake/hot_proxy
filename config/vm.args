@@ -1,0 +1,6 @@
+-sname hot_proxy
+
+-setcookie hot_proxy_cookie
+
++K true
++A30

@@ -1,0 +1,1 @@
+-module(hot_proxy_config).

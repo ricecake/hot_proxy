@@ -16,7 +16,13 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    hot_proxy_sup:start_link().
+	case hot_proxy_sup:start_link() of
+		{ok, Pid} ->
+			{ok, _} = vegur:start_http(8080, hot_proxy_router, [
+				{middlewares, vegur:default_middlewares()}
+			]),
+			{ok, Pid}
+	end.
 
 %%--------------------------------------------------------------------
 stop(_State) ->

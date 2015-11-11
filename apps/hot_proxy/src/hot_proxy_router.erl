@@ -12,27 +12,28 @@
 	error_page/4
 ]).
 
-init(_, Upstream) ->
-	{ok, Upstream, #{}}.
+init(ReqTime, Upstream) ->
+	{ok, Upstream, #{ initiated => ReqTime }}.
 
 lookup_domain_name(Domain, Upstream, State) ->
 	%% hardcoded values, we don't care about the domain for the time being
-	Servers = {Domain, [
+	Servers = {Domain, 30, [
 		{{{127,0,0,1}, 8081}, 1},
 		{{{127,0,0,1}, 8082}, 2}
 	]},
 	{ok, Servers, Upstream, State}.
 
-checkout_service({Domain, Servers}, Upstream, State) ->
+checkout_service({Domain, TTL, Servers}, Upstream, #{ initiated := ReqTime } = State) ->
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
-	case maps:find(RequestKey, State) of
-		error ->
-			{ok, Server} = get_weighted_pick(RequestKey, Servers),
-			{service, Server, Upstream, State#{RequestKey => Server}};
-		Server ->
-			{service, Server, Upstream, State}
-	end.
+	Server = case hot_proxy_route_table:check_cache(RequestKey) of
+		{hit, {CachedServer, Cached}} when Cached > ReqTime -> CachedServer;
+		_ ->
+			{ok, NewServer} = get_weighted_pick(RequestKey, Servers),
+			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, NewServer),
+			NewServer
+	end,
+	{service, Server, Upstream, State}.
 
 service_backend({IP, Port}, Upstream, State) ->
 	%% extract the IP:PORT from the chosen server.

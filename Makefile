@@ -14,4 +14,7 @@ release:
 clean:
 	@$(REBAR) clean
 
+shell:
+	@$(REBAR) shell
+
 .PHONY: release test all compile clean

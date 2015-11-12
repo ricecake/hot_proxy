@@ -24,13 +24,11 @@ checkout_service({_Domain, []}, Upstream, State) ->
 checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime } = State) ->
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
-	Server = case hot_proxy_route_table:check_cache(RequestKey) of
-		{hit, {CachedServer, Cached}} when Cached > ReqTime -> CachedServer;
-		_ ->
-			{ok, {NewServer, TTL}} = get_weighted_pick(RequestKey, Servers),
-			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, NewServer),
-			NewServer
+	{ok, {Server, TTL} = Data} = case hot_proxy_route_table:check_cache(RequestKey) of
+		{hit, {CachedData, CacheTime}} when CacheTime > ReqTime -> {ok, CachedData};
+		_ -> get_weighted_pick(RequestKey, Servers)
 	end,
+	ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
 	{service, Server, Upstream, State}.
 
 service_backend({IP, Port}, Upstream, State) ->

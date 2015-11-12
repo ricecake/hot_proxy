@@ -19,6 +19,8 @@ lookup_domain_name(Domain, Upstream, State) ->
 	{ok, Servers} = hot_proxy_config:get_domain_servers(Domain),
 	{ok, Servers, Upstream, State}.
 
+checkout_service({_Domain, []}, Upstream, State) ->
+	{error, unhandled_domain, Upstream, State};
 checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime } = State) ->
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
@@ -45,6 +47,8 @@ feature(_WhoCares, State) ->
 additional_headers(_Direction, _Log, _Upstream, State) ->
 	{[], State}.
 
+error_page(unhandled_domain, _DomainGroup, Upstream, HandlerState) ->
+	{{404, [], <<>>}, Upstream, HandlerState};
 %% Vegur-returned errors that should be handled no matter what.
 %% Full list in vegur_stub.erl
 error_page({upstream, _Reason}, _DomainGroup, Upstream, HandlerState) ->

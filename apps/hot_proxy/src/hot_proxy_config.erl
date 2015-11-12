@@ -33,13 +33,21 @@ init_tables() ->
 		named_table,
 		{read_concurrency, true}
 	]),
+	ets:insert(?MODULE, [
+		% {domain, domain group, {{{IP, Port}, ttl}, weight}}
+		{<<"0.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
+		{<<"0.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}},
+		{<<"1.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
+		{<<"1.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}},
+		{<<"2.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
+		{<<"2.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}}
+	]),
 	ok.
 
 get_domain_servers(Domain) ->
 	%% hardcoded values, we don't care about the domain for the time being
 	{ok, {Domain, [
-		{{{{127,0,0,1}, 8081}, 30}, 1},
-		{{{{127,0,0,1}, 8082},  1}, 2}
+		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(?MODULE, Domain)
 	]}}.
 
 %% ------------------------------------------------------------------

@@ -8,7 +8,7 @@
 		stdlib,
 		lager,
 		cowboy,
-		jiffy
+		jsx
 	]},
 	{env,[]},
 	{modules, []},

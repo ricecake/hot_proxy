@@ -13,7 +13,7 @@
 ]).
 
 init(ReqTime, Upstream) ->
-	{ok, Upstream, #{ initiated => ReqTime }}.
+	{ok, Upstream, #{ initiated => ReqTime, tried => [] }}.
 
 lookup_domain_name(Domain, Upstream, State) ->
 	{ok, Servers} = hot_proxy_config:get_domain_servers(Domain),
@@ -21,15 +21,23 @@ lookup_domain_name(Domain, Upstream, State) ->
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};
-checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime } = State) ->
+checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried } = State) ->
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
-	{ok, {Server, TTL} = Data} = case hot_proxy_route_table:check_cache(RequestKey) of
+	{ok, {Server, _} = Prelim} = case hot_proxy_route_table:check_cache(RequestKey) of
 		{hit, {CachedData, CacheTime}} when CacheTime > ReqTime -> {ok, CachedData};
 		_ -> get_weighted_pick(RequestKey, Servers)
 	end,
-	ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
-	{service, Server, Upstream, State}.
+	Result = case lists:member(Server, Tried) of
+		true  -> reroute_request(RequestKey, Servers, Tried);
+		false -> {ok, Prelim}
+	end,
+	case Result of
+		{error, Type} -> {error, Type, Upstream, State};
+		{ok, {FinalServer, TTL} = Data} ->
+			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
+			{service, FinalServer, Upstream, State#{ tried := [FinalServer |Tried] }}
+	end.
 
 service_backend({IP, Port}, Upstream, State) ->
 	%% extract the IP:PORT from the chosen server.
@@ -45,6 +53,8 @@ feature(_WhoCares, State) ->
 additional_headers(_Direction, _Log, _Upstream, State) ->
 	{[], State}.
 
+error_page(unavailable, _DomainGroup, Upstream, HandlerState) ->
+	{{500, [], <<>>}, Upstream, HandlerState};
 error_page(unhandled_domain, _DomainGroup, Upstream, HandlerState) ->
 	{{404, [], <<>>}, Upstream, HandlerState};
 %% Vegur-returned errors that should be handled no matter what.
@@ -77,3 +87,9 @@ get_weighted_pick(Key, Options) when is_list(Options) ->
 	WeightedList = lists:flatten([ [{Item, N} || N <- lists:seq(1, Weight)] ||{Item, Weight} <- Options]),
 	[{Item, _Shard}] = lrw:top(Key, WeightedList, 1),
 	{ok, Item}.
+
+reroute_request(RequestKey, Potential, Attempted) ->
+	case lists:filter(fun({{Host,_},_})-> not lists:member(Host, Attempted) end, Potential) of
+		[]        -> {error, unavailable};
+		Remaining -> get_weighted_pick(RequestKey, Remaining)
+	end.

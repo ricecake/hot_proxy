@@ -9,7 +9,8 @@
 -export([start_link/0]).
 -export([
 	init_tables/0,
-	get_domain_servers/1
+	get_domain_servers/1,
+	insert_domain/5
 ]).
 
 %% ------------------------------------------------------------------
@@ -33,17 +34,7 @@ init_tables() ->
 		named_table,
 		{read_concurrency, true}
 	]),
-	ets:insert(?MODULE, [
-		% {domain, domain group, {{{IP, Port}, ttl}, weight}}
-		{<<"0.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
-		{<<"0.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}},
-		{<<"1.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
-		{<<"1.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}},
-		{<<"2.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8081}, 30}, 1}},
-		{<<"2.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}},
-		{<<"3.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8085}, 30}, 100}},
-		{<<"3.hot-proxy.com">>, <<"hot-proxy">>, {{{{127,0,0,1}, 8082},  1}, 1}}
-	]),
+	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, 8081}, {{127,0,0,1}, 8082}], 5, 1),
 	ok.
 
 get_domain_servers(Domain) ->
@@ -51,6 +42,13 @@ get_domain_servers(Domain) ->
 	{ok, {Domain, [
 		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(?MODULE, Domain)
 	]}}.
+
+insert_domain(Domain, Aliases, HostAddr, TTL, Weight) when is_list(Aliases), is_list(HostAddr) ->
+	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port} <- HostAddr],
+	Primary   = [{Domain, Domain, Spec} || Spec <- HostSpecs],
+	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs, Alias <- Aliases],
+	ets:insert(?MODULE, Primary ++ Secondary).
+
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions

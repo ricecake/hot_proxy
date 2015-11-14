@@ -10,7 +10,7 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
-	insert_domain/5
+	insert_domain/3
 ]).
 
 %% ------------------------------------------------------------------
@@ -28,26 +28,26 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init_tables() ->
-	ets:new(?MODULE, [
+	ets:new(hot_proxy_config_lookup, [
 		bag,
 		public,
 		named_table,
 		{read_concurrency, true}
 	]),
-	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, 8081}, {{127,0,0,1}, 8082}], 5, 1),
+	%% hardcoded values, we don't care about the domain for the time being
+	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, Port, 5, 1} || Port <- lists:seq(8081, 8083)]),
 	ok.
 
 get_domain_servers(Domain) ->
-	%% hardcoded values, we don't care about the domain for the time being
 	{ok, {Domain, [
 		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(?MODULE, Domain)
 	]}}.
 
-insert_domain(Domain, Aliases, HostAddr, TTL, Weight) when is_list(Aliases), is_list(HostAddr) ->
-	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port} <- HostAddr],
+insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAddrs) ->
+	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port, TTL, Weight} <- HostAddrs],
 	Primary   = [{Domain, Domain, Spec} || Spec <- HostSpecs],
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs, Alias <- Aliases],
-	ets:insert(?MODULE, Primary ++ Secondary).
+	ets:insert(hot_proxy_config_lookup, Primary ++ Secondary).
 
 
 %% ------------------------------------------------------------------

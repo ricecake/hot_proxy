@@ -62,7 +62,7 @@ handle_cast(_Msg, State) ->
 	{noreply, State}.
 
 handle_info(flush_cache, State) ->
-	ets:select_delete(?MODULE, [{{'$1', {'_', '$2'}}, [{'>', {const, erlang:timestamp()}, '$2'}],[true]}]),
+	ets:select_delete(?MODULE, [{{'_', {'_', '$2'}}, [{'>', {const, erlang:timestamp()}, '$2'}],[true]}]),
 	timer:send_after(timer:seconds(10), flush_cache),
 	{noreply, State};
 handle_info(_Info, State) ->

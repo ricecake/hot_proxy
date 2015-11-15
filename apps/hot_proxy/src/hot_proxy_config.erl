@@ -59,11 +59,11 @@ insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAdd
 	true = ets:insert(hot_proxy_config_lookup, Primary ++ Secondary),
 	ok.
 
-insert_host(Domain, {IP, Port, TTL, Weight}) ->
+insert_host(Domain, {IP, Port, TTL, Weight} = Host) ->
 	Spec = {{{IP, Port}, TTL}, Weight},
 	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Alias <- Aliases],
-	true = ets:insert(?MODULE, {Domain, Aliases, [Spec |HostAddrs]}),
+	true = ets:insert(?MODULE, {Domain, Aliases, [Host |HostAddrs]}),
 	true = ets:insert(hot_proxy_config_lookup, [{Domain, Domain, Spec} |Secondary]),
 	ok.
 
@@ -74,7 +74,23 @@ remove_host(Domain, ExHost) ->
 	ets:select_delete(hot_proxy_config_lookup, [{{'_',Domain,{{ExHost,'_'},'_'}},[],[true]}]),
 	ok.
 
-update_host(_Domain, {_IP, _Port, _TTL, _Weight}) ->
+update_host(Domain, {IP, Port, TTL, Weight}) ->
+	Spec = {{{IP, Port}, TTL}, Weight},
+	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
+	NewHostAddrs = [
+		case Host of
+			{IP, Port, _, _} -> {IP, Port, TTL, Weight};
+			Other -> Other
+		end || Host <- HostAddrs
+	],
+	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Alias <- Aliases],
+	true = ets:insert(?MODULE, {Domain, Aliases, NewHostAddrs}),
+	true = ets:insert(hot_proxy_config_lookup, [{Domain, Domain, Spec} |Secondary]),
+	ets:select_delete(hot_proxy_config_lookup, [{
+		{'_',Domain,{{{IP, Port},'$1'},'$2'}},
+		[{'=/=','$1',{const,TTL}},{'=/=','$2',{const,Weight}}],
+		[true]
+	}]),
 	ok.
 
 %% ------------------------------------------------------------------

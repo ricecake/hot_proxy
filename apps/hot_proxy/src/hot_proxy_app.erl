@@ -26,8 +26,7 @@ start(_StartType, _StartArgs) ->
 
 %%--------------------------------------------------------------------
 stop(_State) ->
-	%lrw:top(tsecst, lists:flatten([ [{Item, N} || N <- lists:seq(1, Weight)] ||{Item, Weight} <- [{a,1},{b,2},{c,1},{d,3},{e,6}]]), 1)
-    ok.
+	ok.
 
 %%====================================================================
 %% Internal functions

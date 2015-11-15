@@ -10,6 +10,7 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
+	insert_host/2,
 	insert_domain/3
 ]).
 
@@ -28,6 +29,11 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init_tables() ->
+	ets:new(?MODULE, [
+		set,
+		public,
+		named_table
+	]),
 	ets:new(hot_proxy_config_lookup, [
 		bag,
 		public,
@@ -40,15 +46,24 @@ init_tables() ->
 
 get_domain_servers(Domain) ->
 	{ok, {Domain, [
-		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(?MODULE, Domain)
+		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(hot_proxy_config_lookup, Domain)
 	]}}.
 
 insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAddrs) ->
 	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port, TTL, Weight} <- HostAddrs],
-	Primary   = [{Domain, Domain, Spec} || Spec <- HostSpecs],
+	Primary   = [ {Domain, Domain, Spec} || Spec <- HostSpecs],
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs, Alias <- Aliases],
-	ets:insert(hot_proxy_config_lookup, Primary ++ Secondary).
+	true = ets:insert(?MODULE, {Domain, Aliases, HostAddrs}),
+	true = ets:insert(hot_proxy_config_lookup, Primary ++ Secondary),
+	ok.
 
+insert_host(Domain, {IP, Port, TTL, Weight}) ->
+	Spec = {{{IP, Port}, TTL}, Weight},
+	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
+	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Alias <- Aliases],
+	true = ets:insert(?MODULE, {Domain, Aliases, [Spec |HostAddrs]}),
+	true = ets:insert(hot_proxy_config_lookup, [{Domain, Domain, Spec} |Secondary]),
+	ok.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions

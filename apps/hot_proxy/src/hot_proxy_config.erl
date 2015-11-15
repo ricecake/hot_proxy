@@ -11,6 +11,8 @@
 	init_tables/0,
 	get_domain_servers/1,
 	insert_host/2,
+	remove_host/2,
+	update_host/2,
 	insert_domain/3
 ]).
 
@@ -63,6 +65,16 @@ insert_host(Domain, {IP, Port, TTL, Weight}) ->
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Alias <- Aliases],
 	true = ets:insert(?MODULE, {Domain, Aliases, [Spec |HostAddrs]}),
 	true = ets:insert(hot_proxy_config_lookup, [{Domain, Domain, Spec} |Secondary]),
+	ok.
+
+remove_host(Domain, ExHost) ->
+	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
+	NewHostAddrs = lists:filter(fun({IP, Port, _, _})-> ExHost =/= {IP, Port} end, HostAddrs),
+	true = ets:insert(?MODULE, {Domain, Aliases, NewHostAddrs}),
+	ets:select_delete(hot_proxy_config_lookup, [{{'_',Domain,{{ExHost,'_'},'_'}},[],[true]}]),
+	ok.
+
+update_host(_Domain, {_IP, _Port, _TTL, _Weight}) ->
 	ok.
 
 %% ------------------------------------------------------------------

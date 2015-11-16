@@ -52,7 +52,7 @@ update_cache(Key, TTL, Data) ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	timer:send_after(timer:seconds(10), flush_cache),
+	erlang:send_after(timer:seconds(10), self(), flush_cache),
 	{ok, #{}}.
 
 handle_call(_Request, _From, State) ->
@@ -63,7 +63,7 @@ handle_cast(_Msg, State) ->
 
 handle_info(flush_cache, State) ->
 	ets:select_delete(?MODULE, [{{'_', {'_', '$2'}}, [{'>', {const, erlang:timestamp()}, '$2'}],[true]}]),
-	timer:send_after(timer:seconds(10), flush_cache),
+	erlang:send_after(timer:seconds(10), self(), flush_cache),
 	{noreply, State};
 handle_info(_Info, State) ->
 	{noreply, State}.

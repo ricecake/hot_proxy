@@ -10,11 +10,12 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
+	insert_domain/3,
+	remove_domain/1,
+	insert_alias/2,
 	insert_host/2,
 	remove_host/2,
-	update_host/2,
-	insert_domain/3,
-	remove_domain/1
+	update_host/2
 ]).
 
 %% ------------------------------------------------------------------
@@ -63,6 +64,14 @@ insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAdd
 remove_domain(Domain) ->
 	ets:select_delete(hot_proxy_config_lookup, [{{'_',Domain,'_'},[],[true]}]),
 	ets:delete(?MODULE, Domain),
+	ok.
+
+insert_alias(Domain, Alias) ->
+	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
+	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port, TTL, Weight} <- HostAddrs],
+	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs],
+	true = ets:insert(?MODULE, {Domain, [Alias |Aliases], HostAddrs}),
+	true = ets:insert(hot_proxy_config_lookup, Secondary),
 	ok.
 
 insert_host(Domain, {IP, Port, TTL, Weight} = Host) ->

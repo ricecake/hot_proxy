@@ -74,6 +74,13 @@ insert_alias(Domain, Alias) ->
 	true = ets:insert(hot_proxy_config_lookup, Secondary),
 	ok.
 
+remove_alias(Domain, Alias) ->
+	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
+	LookupKey = << Alias/bits, $., Domain/bits >>,
+	true = ets:insert(?MODULE, {Domain, Aliases -- [Alias], HostAddrs}),
+	ets:delete(hot_proxy_config_lookup, LookupKey),
+	ok.
+
 insert_host(Domain, {IP, Port, TTL, Weight} = Host) ->
 	Spec = {{{IP, Port}, TTL}, Weight},
 	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),

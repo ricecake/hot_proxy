@@ -36,15 +36,15 @@ checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := 
 		{error, Type} -> {error, Type, Upstream, State};
 		{ok, {FinalServer, TTL} = Data} ->
 			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
+			% Emit connection event including server client and site
 			{service, FinalServer, Upstream, State#{ tried := [FinalServer |Tried] }}
 	end.
 
 service_backend({IP, Port}, Upstream, State) ->
-	%% extract the IP:PORT from the chosen server.
 	{{IP, Port}, Upstream, State}.
 
 checkin_service(_Servers, _Pick, _Phase, _ServState, Upstream, State) ->
-	%% if we tracked total connections, we would decrement the counters here
+	% Emit disconnection event including server, client site and phase
 	{ok, Upstream, State}.
 
 feature(_WhoCares, State) ->

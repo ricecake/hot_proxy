@@ -10,6 +10,7 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
+        get_domain/1,
 	insert_domain/3,
 	remove_domain/1,
 	insert_alias/2,
@@ -53,6 +54,11 @@ get_domain_servers(Domain) ->
 	{ok, {Domain, [
 		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(hot_proxy_config_lookup, Domain)
 	]}}.
+
+
+get_domain(Domain) ->
+        [Config] = ets:lookup(?MODULE, Domain),
+        {ok, Config}.
 
 insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAddrs) ->
 	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port, TTL, Weight} <- HostAddrs],

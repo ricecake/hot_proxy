@@ -10,6 +10,7 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
+        list_domains/0,
         get_domain/1,
 	insert_domain/3,
 	remove_domain/1,
@@ -55,6 +56,8 @@ get_domain_servers(Domain) ->
 		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(hot_proxy_config_lookup, Domain)
 	]}}.
 
+list_domains() ->
+        {ok, [{Domain, {Aliases, Hosts}} || {Domain, Aliases, Hosts} <- ets:tab2list(?MODULE)]}.
 
 get_domain(Domain) ->
         [Config] = ets:lookup(?MODULE, Domain),

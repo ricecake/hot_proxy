@@ -57,11 +57,11 @@ get_domain_servers(Domain) ->
 	]}}.
 
 list_domains() ->
-        {ok, [{Domain, {Aliases, Hosts}} || {Domain, Aliases, Hosts} <- ets:tab2list(?MODULE)]}.
+	{ok, [{Domain, {Aliases, Hosts}} || {Domain, Aliases, Hosts} <- ets:tab2list(?MODULE)]}.
 
 get_domain(Domain) ->
-        [Config] = ets:lookup(?MODULE, Domain),
-        {ok, Config}.
+	[Config] = ets:lookup(?MODULE, Domain),
+	{ok, Config}.
 
 insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAddrs) ->
 	HostSpecs = [ {{{IP, Port}, TTL}, Weight} || {IP, Port, TTL, Weight} <- HostAddrs],
@@ -133,19 +133,19 @@ init(_Args) ->
 	{ok, #{}}.
 
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+	{reply, ok, State}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+	{noreply, State}.
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+	{noreply, State}.
 
 terminate(_Reason, _State) ->
-    ok.
+	ok.
 
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+	{ok, State}.
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

@@ -11,3 +11,7 @@
 	update_host/2
 
 ]).
+
+list_domains() -> hot_proxy_config:list_domains().
+
+get_domain(Domain) -> hot_proxy_config:get_domain(Domain).

@@ -16,7 +16,18 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    hot_proxy_web_sup:start_link().
+	case hot_proxy_web_sup:start_link() of
+		{ok, Pid} ->
+			Dispatch = cowboy_router:compile([
+				{'_', [
+					{"/static/[...]", cowboy_static, {priv_dir, hot_proxy_web, "static/"}}
+				]}
+			]),
+			{ok, _} = cowboy:start_http(http, 25, [{ip, {127,0,0,1}}, {port, 1080}],
+							[{env, [{dispatch, Dispatch}]}]),
+			{ok, Pid}
+	end.
+
 
 %%--------------------------------------------------------------------
 stop(_State) ->

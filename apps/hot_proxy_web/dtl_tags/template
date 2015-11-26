@@ -1,0 +1,1 @@
+<script src="/static/template/{{ name }}" type="text/template" ></script>

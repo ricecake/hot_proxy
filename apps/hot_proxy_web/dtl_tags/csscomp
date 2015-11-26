@@ -1,0 +1,1 @@
+<link href="/static/css/component/{{ name }}.css" rel="stylesheet" type="text/css">

@@ -20,6 +20,7 @@ start(_StartType, _StartArgs) ->
 		{ok, Pid} ->
 			Dispatch = cowboy_router:compile([
 				{'_', [
+					{"/",             hot_proxy_web_page, index},
 					{"/static/[...]", cowboy_static, {priv_dir, hot_proxy_web, "static/"}}
 				]}
 			]),

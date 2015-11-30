@@ -35,7 +35,8 @@ init_tables() ->
 	]),
 	ok.
 
-subscribe(Topic) -> ok.
+subscribe(Topic) ->
+        gen_server:call(?MODULE, {subscribe, Topic}).
 
 send(Topic, Message) -> ok.
 

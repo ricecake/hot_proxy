@@ -50,9 +50,14 @@ init(_Args) ->
 	{ok, #{ subscribers => [] }}.
 
 handle_call({subscribe, Topic}, From, #{ subscribers := Subs } = State) ->
-	MonRef = monitor(process, From),
+	NewSubs = case lists:keyfind(From, 1, Subs) of
+		{From, _MonRef} -> Subs;
+		false          ->
+			MonRef = monitor(process, From),
+			[{From, MonRef} |Subs]
+	end,
 	true = ets:insert(?MODULE, {Topic, From}),
-	{reply, ok, State#{ subscribers := [{From, MonRef} |Subs] }};
+	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 

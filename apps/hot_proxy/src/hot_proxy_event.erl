@@ -8,8 +8,9 @@
 
 -export([start_link/0]).
 -export([
-        subscribe/1,
-        send/2
+	init_tables/0,
+	subscribe/1,
+	send/2
 ]).
 
 %% ------------------------------------------------------------------
@@ -24,7 +25,7 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init_tables() ->
 	ets:new(?MODULE, [
@@ -36,9 +37,10 @@ init_tables() ->
 	ok.
 
 subscribe(Topic) ->
-        gen_server:call(?MODULE, {subscribe, Topic}).
+	gen_server:call(?MODULE, {subscribe, Topic}).
 
-send(Topic, Message) -> ok.
+send(Topic, Message) ->
+	gen_server:call(?MODULE, {send, Topic, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -47,19 +49,19 @@ send(Topic, Message) -> ok.
 init(_Args) ->
 	{ok, #{ subscribers => [] }}.
 
-handle_call({subscribe, Topic}, From, #{ subscribers => Subs } = State) ->
-	MonRef = monitor(process, Socket),
+handle_call({subscribe, Topic}, From, #{ subscribers := Subs } = State) ->
+	MonRef = monitor(process, From),
 	true = ets:insert(?MODULE, {Topic, From}),
-	{reply, ok, State#{ subscribers => [{From, MonRef} |Subs] }};
+	{reply, ok, State#{ subscribers := [{From, MonRef} |Subs] }};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
 handle_cast(_Msg, State) ->
 	{noreply, State}.
 
-handle_info({'DOWN', Ref, _Type, Subscriber, _Exit}, #{ subscribers => Subs } = State) ->
+handle_info({'DOWN', Ref, _Type, Subscriber, _Exit}, #{ subscribers := Subs } = State) ->
 	ets:select_delete(?MODULE, [{{'_',Subscriber},[],[true]}]),
-	{noreply, State#{ subscribers => Subs -- {Subscriber, Ref} }};
+	{noreply, State#{ subscribers := Subs -- [{Subscriber, Ref}] }};
 handle_info(_Info, State) ->
 	{noreply, State}.
 

@@ -22,7 +22,7 @@ lookup_domain_name(Domain, Upstream, State) ->
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};
 checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried } = State) ->
-	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
+	{{PeerIp, _PeerPort}, Upstream2} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
 	{ok, {Server, _} = Prelim} = case hot_proxy_route_table:check_cache(RequestKey) of
 		{hit, {CachedData, CacheTime}} when CacheTime > ReqTime -> {ok, CachedData};
@@ -37,14 +37,17 @@ checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := 
 		{ok, {FinalServer, TTL} = Data} ->
 			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
 			% Emit connection event including server client and site
-			{service, FinalServer, Upstream, State#{ tried := [FinalServer |Tried] }}
+			hot_proxy_event:send(checkout, FinalServer),
+			{service, FinalServer, Upstream2, State#{ tried := [FinalServer |Tried] }}
 	end.
 
 service_backend({IP, Port}, Upstream, State) ->
 	{{IP, Port}, Upstream, State}.
 
-checkin_service(_Servers, _Pick, _Phase, _ServState, Upstream, State) ->
+checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_] } = State) ->
 	% Emit disconnection event including server, client site and phase
+	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
+	hot_proxy_event:send(checkin, {Domain, Server, Phase, PeerIp, ServState}),
 	{ok, Upstream, State}.
 
 feature(_WhoCares, State) ->

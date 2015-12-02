@@ -49,7 +49,7 @@ send(Topic, Message) ->
 init(_Args) ->
 	{ok, #{ subscribers => [] }}.
 
-handle_call({subscribe, Topic}, From, #{ subscribers := Subs } = State) ->
+handle_call({subscribe, Topic}, {From, _}, #{ subscribers := Subs } = State) ->
 	NewSubs = case lists:keyfind(From, 1, Subs) of
 		{From, _MonRef} -> Subs;
 		false          ->
@@ -58,6 +58,9 @@ handle_call({subscribe, Topic}, From, #{ subscribers := Subs } = State) ->
 	end,
 	true = ets:insert(?MODULE, {Topic, From}),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
+handle_call({send, Topic, Message}, {From, _}, State) ->
+	[Subscriber ! {hot_proxy_event, From, {Topic, Message}} || {_, Subscriber} <- ets:lookup(?MODULE, Topic)],
+	{reply, ok, State};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 

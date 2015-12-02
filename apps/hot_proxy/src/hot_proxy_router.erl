@@ -47,7 +47,7 @@ service_backend({IP, Port}, Upstream, State) ->
 checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_] } = State) ->
 	% Emit disconnection event including server, client site and phase
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
-	hot_proxy_event:send(checkin, {Domain, Server, Phase, PeerIp, ServState}),
+	hot_proxy_event:send(checkin, {Phase, Server, Domain, PeerIp, ServState}),
 	{ok, Upstream, State}.
 
 feature(_WhoCares, State) ->

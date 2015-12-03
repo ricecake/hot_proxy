@@ -13,5 +13,11 @@
 {% endblock %}
 
 {% block extraJs %}
-{% jslib name="domain" %}
+        {% jscomp name="domain" %}
+{% endblock %}
+{% block extraCss %}
+        {% csscomp name="domain" %}
+{% endblock %}
+{% block templates %}
+        {% template name="domain.html" %}
 {% endblock %}

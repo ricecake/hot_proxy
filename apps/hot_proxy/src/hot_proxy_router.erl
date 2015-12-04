@@ -13,7 +13,8 @@
 ]).
 
 init(ReqTime, Upstream) ->
-	{ok, Upstream, #{ initiated => ReqTime, tried => [] }}.
+	UUID = erlang:list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+	{ok, Upstream, #{ initiated => ReqTime, tried => [], request => UUID }}.
 
 lookup_domain_name(Domain, Upstream, State) ->
 	{ok, Servers} = hot_proxy_config:get_domain_servers(Domain),
@@ -21,7 +22,7 @@ lookup_domain_name(Domain, Upstream, State) ->
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};
-checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried } = State) ->
+checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried, request := UUID } = State) ->
 	{{PeerIp, _PeerPort}, Upstream2} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
 	{ok, {Server, _} = Prelim} = case hot_proxy_route_table:check_cache(RequestKey) of
@@ -37,17 +38,17 @@ checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := 
 		{ok, {FinalServer, TTL} = Data} ->
 			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
 			% Emit connection event including server client and site
-			hot_proxy_event:send(checkout, FinalServer),
+			hot_proxy_event:send(<<"route.checkout">>, {UUID, FinalServer, Domain, PeerIp}),
 			{service, FinalServer, Upstream2, State#{ tried := [FinalServer |Tried] }}
 	end.
 
 service_backend({IP, Port}, Upstream, State) ->
 	{{IP, Port}, Upstream, State}.
 
-checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_] } = State) ->
+checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_], request := UUID } = State) ->
 	% Emit disconnection event including server, client site and phase
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
-	hot_proxy_event:send(checkin, {Phase, Server, Domain, PeerIp, ServState}),
+	hot_proxy_event:send(<<"route.checkin">>, {UUID, Phase, Server, Domain, PeerIp, ServState}),
 	{ok, Upstream, State}.
 
 feature(_WhoCares, State) ->

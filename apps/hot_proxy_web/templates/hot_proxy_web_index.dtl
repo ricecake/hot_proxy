@@ -19,5 +19,5 @@
         {% csscomp name="domain" %}
 {% endblock %}
 {% block templates %}
-        {% template name="domain.html" %}
+        {% template name="domain" %}
 {% endblock %}

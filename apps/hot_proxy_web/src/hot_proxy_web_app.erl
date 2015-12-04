@@ -21,6 +21,7 @@ start(_StartType, _StartArgs) ->
 			Dispatch = cowboy_router:compile([
 				{'_', [
 					{"/",             hot_proxy_web_page, index},
+					{"/ws",           hot_proxy_web_ws,   #{}},
 					{"/static/[...]", cowboy_static, {priv_dir, hot_proxy_web, "static/"}}
 				]}
 			]),

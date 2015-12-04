@@ -6,6 +6,9 @@ compile:
 	@$(REBAR) compile
 
 test:
+	@$(REBAR) do xref, eunit, ct, cover
+
+test-all:
 	@$(REBAR) do xref, dialyzer, eunit, ct, cover
 
 release:

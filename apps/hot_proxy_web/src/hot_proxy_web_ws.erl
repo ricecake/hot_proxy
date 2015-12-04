@@ -14,8 +14,7 @@
 %% ===================================================================
 
 init(Req, Opts) when is_map(Opts)->
-	hot_proxy_event:subscribe(checkin),
-	hot_proxy_event:subscribe(checkout),
+	hot_proxy_event:subscribe([checkin, checkout]),
 	{cowboy_websocket, Req, Opts}.
 
 websocket_handle({text, JSON} = Data, Req, State) ->
@@ -29,8 +28,10 @@ websocket_handle(_Frame, Req, State) ->
 
 websocket_info({send, Message}, Req, State) ->
 	{reply, {text, Message}, Req, State};
-websocket_info(Message, Req, State) ->
-	send(self(), info, erlang:iolist_to_binary(io_lib:format("~p", [Message]))),
+websocket_info({hot_proxy_event, _Handler, {Type, Event}}, Req, State) ->
+	send(self(), Type, erlang:iolist_to_binary(io_lib:format("~p", [Event]))),
+	{ok, Req, State};
+websocket_info(_Message, Req, State) ->
 	{ok, Req, State}.
 
 

@@ -36,8 +36,9 @@ init_tables() ->
 	]),
 	ok.
 
-subscribe(Topic) ->
-	gen_server:call(?MODULE, {subscribe, Topic}).
+subscribe(Topics) when is_list(Topics)->
+	gen_server:call(?MODULE, {subscribe, Topics});
+subscribe(Topic) -> subscribe([Topic]).
 
 send(Topic, Message) ->
 	gen_server:call(?MODULE, {send, Topic, Message}).
@@ -49,14 +50,14 @@ send(Topic, Message) ->
 init(_Args) ->
 	{ok, #{ subscribers => [] }}.
 
-handle_call({subscribe, Topic}, {From, _}, #{ subscribers := Subs } = State) ->
+handle_call({subscribe, Topics}, {From, _}, #{ subscribers := Subs } = State) ->
 	NewSubs = case lists:keyfind(From, 1, Subs) of
 		{From, _MonRef} -> Subs;
 		false          ->
 			MonRef = monitor(process, From),
 			[{From, MonRef} |Subs]
 	end,
-	true = ets:insert(?MODULE, {Topic, From}),
+	true = ets:insert(?MODULE, [{Topic, From} || Topic <- Topics]),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call({send, Topic, Message}, {From, _}, State) ->
 	[Subscriber ! {hot_proxy_event, From, {Topic, Message}} || {_, Subscriber} <- ets:lookup(?MODULE, Topic)],

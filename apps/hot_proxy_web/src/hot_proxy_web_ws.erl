@@ -54,6 +54,7 @@ websocket_info({hot_proxy_event, _Handler, {Type = <<"route.checkout">>, {UUID, 
 		request => UUID,
 		domain  => Domain,
 		phase   => <<"initialize">>,
+		state   => <<"normal">>,
 		client  => #{
 			ip => PeerIp
 		},

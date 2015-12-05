@@ -60,7 +60,7 @@ handle_call({subscribe, Topics}, {From, _}, #{ subscribers := Subs } = State) ->
 	true = ets:insert(?MODULE, [{Topic, From} || Topic <- Topics]),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call({send, Topic, Message}, {From, _}, State) ->
-	[Subscriber ! {hot_proxy_event, From, {Topic, Message}} || {_, Subscriber} <- ets:lookup(?MODULE, Topic)],
+	[send_event(Message, From, Rec)|| Rec <- ets:lookup(?MODULE, Topic)],
 	{reply, ok, State};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
@@ -83,3 +83,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+send_event(Message, From, {Topic, Subscriber}) -> 
+        Subscriber ! {hot_proxy_event, From, {Topic, Message}},
+        ok.

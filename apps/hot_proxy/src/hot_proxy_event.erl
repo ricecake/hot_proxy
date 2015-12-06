@@ -84,6 +84,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
+send_event(Message, From, {Topic, Subscriber, Fun}) ->
+        Fun(Subscriber, From, {Topic, Message}),
+        ok;
 send_event(Message, From, {Topic, Subscriber}) -> 
         Subscriber ! {hot_proxy_event, From, {Topic, Message}},
         ok.

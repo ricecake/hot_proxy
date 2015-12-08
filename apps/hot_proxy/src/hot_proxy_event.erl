@@ -10,6 +10,7 @@
 -export([
 	init_tables/0,
 	subscribe/1,
+	subscribe/2,
 	send/2
 ]).
 
@@ -40,6 +41,10 @@ subscribe(Topics) when is_list(Topics)->
 	gen_server:call(?MODULE, {subscribe, Topics});
 subscribe(Topic) -> subscribe([Topic]).
 
+subscribe(Topics, Callback) when is_list(Topics)->
+	gen_server:call(?MODULE, {subscribe, Topics, Callback});
+subscribe(Topic, Callback) -> subscribe([Topic], Callback).
+
 send(Topic, Message) ->
 	gen_server:cast(?MODULE, {send, self(), Topic, Message}).
 
@@ -51,13 +56,12 @@ init(_Args) ->
 	{ok, #{ subscribers => [] }}.
 
 handle_call({subscribe, Topics}, {From, _}, #{ subscribers := Subs } = State) ->
-	NewSubs = case lists:keyfind(From, 1, Subs) of
-		{From, _MonRef} -> Subs;
-		false          ->
-			MonRef = monitor(process, From),
-			[{From, MonRef} |Subs]
-	end,
+	NewSubs = ensure_monitor(From, Subs),
 	true = ets:insert(?MODULE, [{Topic, From} || Topic <- Topics]),
+	{reply, ok, State#{ subscribers :=  NewSubs }};
+handle_call({subscribe, Topics, Callback}, {From, _}, #{ subscribers := Subs } = State) ->
+	NewSubs = ensure_monitor(From, Subs),
+	true = ets:insert(?MODULE, [{Topic, From, Callback} || Topic <- Topics]),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
@@ -90,3 +94,11 @@ send_event(Message, From, {Topic, Subscriber, Fun}) ->
 send_event(Message, From, {Topic, Subscriber}) ->
 	Subscriber ! {hot_proxy_event, From, {Topic, Message}},
 	ok.
+
+ensure_monitor(New, Existing) when is_pid(New) ->
+	case lists:keyfind(New, 1, Existing) of
+		{New, _MonRef} -> Existing;
+		false          ->
+			MonRef = monitor(process, New),
+			[{New, MonRef} |Existing]
+	end.

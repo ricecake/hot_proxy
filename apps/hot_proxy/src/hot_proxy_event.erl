@@ -41,7 +41,7 @@ subscribe(Topics) when is_list(Topics)->
 subscribe(Topic) -> subscribe([Topic]).
 
 send(Topic, Message) ->
-	gen_server:call(?MODULE, {send, Topic, Message}).
+	gen_server:cast(?MODULE, {send, self(), Topic, Message}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -59,12 +59,12 @@ handle_call({subscribe, Topics}, {From, _}, #{ subscribers := Subs } = State) ->
 	end,
 	true = ets:insert(?MODULE, [{Topic, From} || Topic <- Topics]),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
-handle_call({send, Topic, Message}, {From, _}, State) ->
-	[send_event(Message, From, Rec)|| Rec <- ets:lookup(?MODULE, Topic)],
-	{reply, ok, State};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
+handle_cast({send, From, Topic, Message}, State) ->
+	[send_event(Message, From, Rec)|| Rec <- ets:lookup(?MODULE, Topic)],
+	{noreply, State};
 handle_cast(_Msg, State) ->
 	{noreply, State}.
 
@@ -85,8 +85,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 send_event(Message, From, {Topic, Subscriber, Fun}) ->
-        Fun(Subscriber, From, {Topic, Message}),
-        ok;
-send_event(Message, From, {Topic, Subscriber}) -> 
-        Subscriber ! {hot_proxy_event, From, {Topic, Message}},
-        ok.
+	Fun(Subscriber, From, {Topic, Message}),
+	ok;
+send_event(Message, From, {Topic, Subscriber}) ->
+	Subscriber ! {hot_proxy_event, From, {Topic, Message}},
+	ok.

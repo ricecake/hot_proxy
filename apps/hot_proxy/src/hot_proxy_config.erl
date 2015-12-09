@@ -69,11 +69,13 @@ insert_domain(Domain, Aliases, HostAddrs) when is_list(Aliases), is_list(HostAdd
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs, Alias <- Aliases],
 	true = ets:insert(?MODULE, {Domain, Aliases, HostAddrs}),
 	true = ets:insert(hot_proxy_config_lookup, Primary ++ Secondary),
+	hot_proxy_event:send(<<"config.insert.domain">>, {Domain, Aliases, HostAddrs}),
 	ok.
 
 remove_domain(Domain) ->
 	ets:select_delete(hot_proxy_config_lookup, [{{'_',Domain,'_'},[],[true]}]),
 	ets:delete(?MODULE, Domain),
+	hot_proxy_event:send(<<"config.remove.domain">>, Domain),
 	ok.
 
 insert_alias(Domain, Alias) ->
@@ -82,6 +84,7 @@ insert_alias(Domain, Alias) ->
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Spec <- HostSpecs],
 	true = ets:insert(?MODULE, {Domain, [Alias |Aliases], HostAddrs}),
 	true = ets:insert(hot_proxy_config_lookup, Secondary),
+	hot_proxy_event:send(<<"config.insert.alias">>, {Domain, Alias}),
 	ok.
 
 remove_alias(Domain, Alias) ->
@@ -89,6 +92,7 @@ remove_alias(Domain, Alias) ->
 	LookupKey = << Alias/bits, $., Domain/bits >>,
 	true = ets:insert(?MODULE, {Domain, Aliases -- [Alias], HostAddrs}),
 	ets:delete(hot_proxy_config_lookup, LookupKey),
+	hot_proxy_event:send(<<"config.remove.alias">>, {Domain, Alias}),
 	ok.
 
 insert_host(Domain, {IP, Port, TTL, Weight} = Host) ->
@@ -97,6 +101,7 @@ insert_host(Domain, {IP, Port, TTL, Weight} = Host) ->
 	Secondary = [ {<< Alias/bits, $., Domain/bits >>, Domain, Spec} || Alias <- Aliases],
 	true = ets:insert(?MODULE, {Domain, Aliases, [Host |HostAddrs]}),
 	true = ets:insert(hot_proxy_config_lookup, [{Domain, Domain, Spec} |Secondary]),
+	hot_proxy_event:send(<<"config.insert.host">>, {Domain, Host}),
 	ok.
 
 remove_host(Domain, ExHost) ->
@@ -104,9 +109,10 @@ remove_host(Domain, ExHost) ->
 	NewHostAddrs = lists:filter(fun({IP, Port, _, _})-> ExHost =/= {IP, Port} end, HostAddrs),
 	true = ets:insert(?MODULE, {Domain, Aliases, NewHostAddrs}),
 	ets:select_delete(hot_proxy_config_lookup, [{{'_',Domain,{{ExHost,'_'},'_'}},[],[true]}]),
+	hot_proxy_event:send(<<"config.remove.host">>, {Domain, ExHost}),
 	ok.
 
-update_host(Domain, {IP, Port, TTL, Weight}) ->
+update_host(Domain, {IP, Port, TTL, Weight} = NewHost) ->
 	Spec = {{{IP, Port}, TTL}, Weight},
 	[{Domain, Aliases, HostAddrs}] = ets:lookup(?MODULE, Domain),
 	NewHostAddrs = [
@@ -123,6 +129,7 @@ update_host(Domain, {IP, Port, TTL, Weight}) ->
 		[{'=/=','$1',{const,TTL}},{'=/=','$2',{const,Weight}}],
 		[true]
 	}]),
+	hot_proxy_event:send(<<"config.update.host">>, {Domain, NewHost}),
 	ok.
 
 %% ------------------------------------------------------------------

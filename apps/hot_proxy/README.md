@@ -12,6 +12,10 @@ for X period of time after being assigned".
 The objective is to make sure that nodes get hit proportionally, but so that clients don't potentially have bouncing sessions dependent on how big
 the difference between the proxied environments is.
 
+
+Need to look into re-working the event implementation to use an ets backed trie.  Shouldn't be too hard to implement, just need to snipe a bit of
+the logic out of the js trie implementation.
+
 Build
 -----
 

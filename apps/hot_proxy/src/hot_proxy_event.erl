@@ -13,7 +13,9 @@
 	subscribe/2,
 	send/2,
 	routify/2,
-	path/1
+	path/1,
+	subpaths/1,
+	lookup/1
 ]).
 
 %% ------------------------------------------------------------------
@@ -120,12 +122,44 @@ path(Key) when is_binary(Key) ->
 	end, {null, []}, Path),
 	{ok, lists:reverse(Nodes)}.
 
-%lookup(Route) ->
-%	{ok, Paths} = path(Route),
-%	do_lookup(Paths, []).
-%
-%do_lookup([{Parent, Label}], Callbacks) ->
-%	Callbacks;
-%do_lookup([{Parent, Label} |Paths], Callbacks) ->
-%	ets:lookup(?MODULE, {Parent, <<"*">>}),
+lookup(Route) ->
+	Path = binary:split(Route, <<".">>, [global]),
+	do_lookup(null, Path, []).
 
+do_lookup(_, [], Callbacks) -> Callbacks;
+do_lookup(Parent, [Label], Callbacks) ->
+	NewParent = if
+		Parent ==  null -> Label;
+		Parent =/= null -> << Parent/bits, $., Label/bits >>
+	end,
+	NewCallbacks = resolve_wildcards(Parent, NewParent, [], Callbacks),
+	[ Data || {_, Data} <- ets:lookup(?MODULE, {Parent, Label}) ++ NewCallbacks];
+do_lookup(Parent, [Label |Path], Callbacks) ->
+	NewParent = if
+		Parent ==  null -> Label;
+		Parent =/= null -> << Parent/bits, $., Label/bits >>
+	end,
+	NewCallbacks = resolve_wildcards(Parent, NewParent, Path, Callbacks),
+	do_lookup(NewParent, Path, NewCallbacks).
+
+subpaths(Path) ->
+	{Last, SubPaths} = lists:foldl(fun
+		(El, {null, Paths})->
+			{El, Paths};
+		(El, {Curr, Paths})->
+			{<< El/bits, $., Curr/bits>>, [Curr |Paths]}
+		end,
+		{null, []},
+		lists:reverse(binary:split(Path, <<".">>, [global]))
+	),
+	[Last |SubPaths].
+
+resolve_wildcards(Parent, NewParent, Path, Callbacks) ->
+	StarCallbacks = case ets:lookup(?MODULE, {Parent, <<"*">>}) of
+		[]     -> Callbacks;
+		[_] -> do_lookup(NewParent, Path, Callbacks)
+	end,
+	case ets:lookup(?MODULE, {Parent, <<"#">>}) of
+		[]     -> Callbacks;
+		[{_, Data}] -> [Data |lists:flatten([ do_lookup(NewParent, ThisPath, StarCallbacks) || ThisPath <- subpaths(Path)])]
+	end.

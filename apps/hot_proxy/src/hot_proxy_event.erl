@@ -11,7 +11,9 @@
 	init_tables/0,
 	subscribe/1,
 	subscribe/2,
-	send/2
+	send/2,
+	routify/2,
+	path/1
 ]).
 
 %% ------------------------------------------------------------------
@@ -57,11 +59,11 @@ init(_Args) ->
 
 handle_call({subscribe, Topics}, {From, _}, #{ subscribers := Subs } = State) ->
 	NewSubs = ensure_monitor(From, Subs),
-	true = ets:insert(?MODULE, [{Topic, From} || Topic <- Topics]),
+	true = ets:insert(?MODULE, lists:flatten([routify(Topic, From) || Topic <- Topics])),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call({subscribe, Topics, Callback}, {From, _}, #{ subscribers := Subs } = State) ->
 	NewSubs = ensure_monitor(From, Subs),
-	true = ets:insert(?MODULE, [{Topic, From, Callback} || Topic <- Topics]),
+	true = ets:insert(?MODULE, lists:flatten([routify(Topic, {From, Callback}) || Topic <- Topics])),
 	{reply, ok, State#{ subscribers :=  NewSubs }};
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
@@ -102,3 +104,28 @@ ensure_monitor(New, Existing) when is_pid(New) ->
 			MonRef = monitor(process, New),
 			[{New, MonRef} |Existing]
 	end.
+
+routify(Key, Data) ->
+	{ok, RevPath} = path(Key),
+	[Terminal |Nodes] = lists:reverse(RevPath),
+	[{Terminal, Data}|[ {Node, undefined} || Node <- Nodes]].
+
+path(Key) when is_binary(Key) ->
+	Path = binary:split(Key, <<".">>, [global]),
+	{_, Nodes} = lists:foldl(fun
+		(Node, {null, List}) ->
+			{Node, [{null, Node} |List]};
+		(Node, {Parent, List}) ->
+			{<< Parent/bits, $., Node/bits >>, [{Parent, Node} |List]}
+	end, {null, []}, Path),
+	{ok, lists:reverse(Nodes)}.
+
+%lookup(Route) ->
+%	{ok, Paths} = path(Route),
+%	do_lookup(Paths, []).
+%
+%do_lookup([{Parent, Label}], Callbacks) ->
+%	Callbacks;
+%do_lookup([{Parent, Label} |Paths], Callbacks) ->
+%	ets:lookup(?MODULE, {Parent, <<"*">>}),
+

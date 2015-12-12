@@ -18,7 +18,8 @@
 	remove_alias/2,
 	insert_host/2,
 	remove_host/2,
-	update_host/2
+	update_host/2,
+	generate_test_data/0
 ]).
 
 %% ------------------------------------------------------------------
@@ -31,6 +32,10 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
+
+generate_test_data() ->
+	%% hardcoded values, we don't care about the domain for the time being
+	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, Port, 5, 1} || Port <- lists:seq(8081, 8083)]).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -47,8 +52,6 @@ init_tables() ->
 		named_table,
 		{read_concurrency, true}
 	]),
-	%% hardcoded values, we don't care about the domain for the time being
-	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, Port, 5, 1} || Port <- lists:seq(8081, 8083)]),
 	ok.
 
 get_domain_servers(Domain) ->

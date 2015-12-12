@@ -14,7 +14,7 @@
 %% ===================================================================
 
 init(Req, Opts) when is_map(Opts)->
-	hot_proxy_event:subscribe([<<"route.checkin">>, <<"route.checkout">>, <<"config.insert.alias">>, <<"config.insert.host">>], fun(Subscriber, _From, {Topic, Message}) ->
+	hot_proxy_event:subscribe([<<"#">>], fun(Subscriber, _From, {Topic, Message}) ->
 		handle_route_event(Subscriber, Topic, Message)
 	end),
 	{cowboy_websocket, Req, Opts}.

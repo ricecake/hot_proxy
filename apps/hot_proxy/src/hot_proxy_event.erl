@@ -12,9 +12,6 @@
 	subscribe/1,
 	subscribe/2,
 	send/2,
-	routify/2,
-	path/1,
-	subpaths/1,
 	lookup/1
 ]).
 
@@ -52,6 +49,11 @@ subscribe(Topic, Callback) -> subscribe([Topic], Callback).
 send(Topic, Message) ->
 	[send_event(Message, self(), Topic, Rec)|| Rec <- lookup(Topic)],
 	ok.
+
+lookup(Route) ->
+	Path = binary:split(Route, <<".">>, [global]),
+	[ Data || {_, Data} <- do_lookup(null, Path, [])].
+
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -125,10 +127,6 @@ path(Key) when is_binary(Key) ->
 			{<< Parent/bits, $., Node/bits >>, [{Parent, Node} |List]}
 	end, {null, []}, Path),
 	{ok, lists:reverse(Nodes)}.
-
-lookup(Route) ->
-	Path = binary:split(Route, <<".">>, [global]),
-	[ Data || {_, Data} <- do_lookup(null, Path, [])].
 
 do_lookup(_, [], Callbacks) -> Callbacks;
 do_lookup(Parent, [Label], Callbacks) ->

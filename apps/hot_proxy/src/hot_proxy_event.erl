@@ -50,7 +50,8 @@ subscribe(Topics, Callback) when is_list(Topics)->
 subscribe(Topic, Callback) -> subscribe([Topic], Callback).
 
 send(Topic, Message) ->
-	gen_server:cast(?MODULE, {send, self(), Topic, Message}).
+	[send_event(Message, self(), Topic, Rec)|| Rec <- lookup(Topic)],
+	ok.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -71,13 +72,16 @@ handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
 handle_cast({send, From, Topic, Message}, State) ->
-	[send_event(Message, From, Rec)|| Rec <- ets:lookup(?MODULE, Topic)],
+	[send_event(Message, From, Topic, Rec)|| Rec <- lookup(Topic)],
 	{noreply, State};
 handle_cast(_Msg, State) ->
 	{noreply, State}.
 
 handle_info({'DOWN', Ref, _Type, Subscriber, _Exit}, #{ subscribers := Subs } = State) ->
-	ets:select_delete(?MODULE, [{{'_',Subscriber},[],[true]}]),
+	ets:select_delete(?MODULE, [
+		{{'_',Subscriber},[],[true]},
+		{{'_',{Subscriber,'_'}},[],[true]}
+	]),
 	{noreply, State#{ subscribers := Subs -- [{Subscriber, Ref}] }};
 handle_info(_Info, State) ->
 	{noreply, State}.
@@ -92,10 +96,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-send_event(Message, From, {Topic, Subscriber, Fun}) ->
+send_event(Message, From, Topic, {Subscriber, Fun}) ->
 	Fun(Subscriber, From, {Topic, Message}),
 	ok;
-send_event(Message, From, {Topic, Subscriber}) ->
+send_event(Message, From, Topic, Subscriber) ->
 	Subscriber ! {hot_proxy_event, From, {Topic, Message}},
 	ok.
 
@@ -124,7 +128,7 @@ path(Key) when is_binary(Key) ->
 
 lookup(Route) ->
 	Path = binary:split(Route, <<".">>, [global]),
-	do_lookup(null, Path, []).
+	[ Data || {_, Data} <- do_lookup(null, Path, [])].
 
 do_lookup(_, [], Callbacks) -> Callbacks;
 do_lookup(Parent, [Label], Callbacks) ->
@@ -133,7 +137,7 @@ do_lookup(Parent, [Label], Callbacks) ->
 		Parent =/= null -> << Parent/bits, $., Label/bits >>
 	end,
 	NewCallbacks = resolve_wildcards(Parent, NewParent, [], Callbacks),
-	[ Data || {_, Data} <- ets:lookup(?MODULE, {Parent, Label}) ++ NewCallbacks];
+	ets:lookup(?MODULE, {Parent, Label}) ++ NewCallbacks;
 do_lookup(Parent, [Label |Path], Callbacks) ->
 	NewParent = if
 		Parent ==  null -> Label;
@@ -145,12 +149,12 @@ do_lookup(Parent, [Label |Path], Callbacks) ->
 subpaths(Path) ->
 	{Last, SubPaths} = lists:foldl(fun
 		(El, {null, Paths})->
-			{El, Paths};
+			{[El], Paths};
 		(El, {Curr, Paths})->
-			{<< El/bits, $., Curr/bits>>, [Curr |Paths]}
+			{[El |Curr], [Curr |Paths]}
 		end,
 		{null, []},
-		lists:reverse(binary:split(Path, <<".">>, [global]))
+		lists:reverse(Path)
 	),
 	[Last |SubPaths].
 
@@ -161,5 +165,5 @@ resolve_wildcards(Parent, NewParent, Path, Callbacks) ->
 	end,
 	case ets:lookup(?MODULE, {Parent, <<"#">>}) of
 		[]     -> Callbacks;
-		[{_, Data}] -> [Data |lists:flatten([ do_lookup(NewParent, ThisPath, StarCallbacks) || ThisPath <- subpaths(Path)])]
+		Nodes  -> Nodes ++ lists:flatten([ do_lookup(NewParent, ThisPath, StarCallbacks) || ThisPath <- subpaths(Path)])
 	end.

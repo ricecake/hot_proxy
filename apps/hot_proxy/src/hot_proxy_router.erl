@@ -49,6 +49,11 @@ checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Ser
 	% Emit disconnection event including server, client site and phase
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
 	hot_proxy_event:send(<<"route.checkin">>, {UUID, Phase, Server, Domain, PeerIp, ServState}),
+	{ok, Upstream, State};
+checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ request := UUID } = State) ->
+	% Emit disconnection event including server, client site and phase
+	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
+	hot_proxy_event:send(<<"route.termination.anomaly">>, {UUID, Phase, null, Domain, PeerIp, ServState}),
 	{ok, Upstream, State}.
 
 feature(_WhoCares, State) ->

@@ -35,7 +35,8 @@ init([]) ->
 	{ok, { {one_for_all, 0, 1}, [
 		?CHILD(hot_proxy_event, worker),
 		?CHILD(hot_proxy_config, worker),
-		?CHILD(hot_proxy_route_table, worker)
+		?CHILD(hot_proxy_route_table, worker),
+                ?CHILD(hot_proxy_stats_sup, supervisor)
 	]} }.
 
 %%====================================================================

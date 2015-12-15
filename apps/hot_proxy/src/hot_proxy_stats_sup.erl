@@ -30,6 +30,7 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
+	ok = hot_proxy_stats_srv:init_tables(),
 	{ok, { {one_for_all, 0, 1}, [
 		?CHILD(hot_proxy_stats_worker_sup, supervisor),
 		?CHILD(hot_proxy_stats_srv, worker)

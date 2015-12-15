@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%% @doc hot_proxy routing statistics supervisor.
+%% @doc hot_proxy routing statistics worker supervisor.
 %% @end
 %%%-------------------------------------------------------------------
 
--module(hot_proxy_stats_sup).
+-module(hot_proxy_stats_worker_sup).
 
 -behaviour(supervisor).
 
@@ -30,9 +30,8 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-	{ok, { {one_for_all, 0, 1}, [
-		?CHILD(hot_proxy_stats_worker_sup, supervisor),
-		?CHILD(hot_proxy_stats_srv, worker)
+	{ok, { {simple_one_for_one, 0, 1}, [
+		?CHILD(hot_proxy_stats_worker, worker)
 	]}}.
 
 %%====================================================================

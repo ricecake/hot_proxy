@@ -49,6 +49,14 @@ init(_Args) ->
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
+handle_cast({config_change, <<"config.insert.host">>, _Message}, State) ->
+	{noreply, State};
+handle_cast({config_change, <<"config.remove.host">>, _Message}, State) ->
+	{noreply, State};
+handle_cast({config_change, <<"config.insert.domain">>, _Message}, State) ->
+	{noreply, State};
+handle_cast({config_change, <<"config.remove.domain">>, _Message}, State) ->
+	{noreply, State};
 handle_cast(_Msg, State) ->
 	{noreply, State}.
 

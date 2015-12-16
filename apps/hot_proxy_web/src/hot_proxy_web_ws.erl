@@ -14,7 +14,7 @@
 %% ===================================================================
 
 init(Req, Opts) when is_map(Opts)->
-	hot_proxy_event:subscribe([<<"#">>], fun(Subscriber, _From, {Topic, Message}) ->
+	pubsub:subscribe([<<"#">>], fun(Subscriber, _From, {Topic, Message}) ->
 		handle_route_event(Subscriber, Topic, Message)
 	end),
 	{cowboy_websocket, Req, Opts}.
@@ -30,7 +30,7 @@ websocket_handle(_Frame, Req, State) ->
 
 websocket_info({send, Message}, Req, State) ->
 	{reply, {text, Message}, Req, State};
-websocket_info({hot_proxy_event, Type = <<"route.checkin">>,  {UUID, Phase, Server, Domain, Peer, ServState}}, Req, State) ->
+websocket_info({pubsub, Type = <<"route.checkin">>,  {UUID, Phase, Server, Domain, Peer, ServState}}, Req, State) ->
 	{ServerIpTuple, Port} = Server,
 	ServerIp = ip_to_binary(ServerIpTuple),
 	PeerIp = ip_to_binary(Peer),
@@ -48,7 +48,7 @@ websocket_info({hot_proxy_event, Type = <<"route.checkin">>,  {UUID, Phase, Serv
 		}
 	},
 	{reply, {text, jsx:encode(#{ type => Type, content => Message })}, Req, State};
-websocket_info({hot_proxy_event, Type = <<"route.checkout">>, {UUID, Server, Domain, Peer}}, Req, State) ->
+websocket_info({pubsub, Type = <<"route.checkout">>, {UUID, Server, Domain, Peer}}, Req, State) ->
 	{ServerIpTuple, Port} = Server,
 	ServerIp = ip_to_binary(ServerIpTuple),
 	PeerIp = ip_to_binary(Peer),
@@ -66,7 +66,7 @@ websocket_info({hot_proxy_event, Type = <<"route.checkout">>, {UUID, Server, Dom
 		}
 	},
 	{reply, {text, jsx:encode(#{ type => Type, content => Message })}, Req, State};
-websocket_info({hot_proxy_event, Type, Event}, Req, State) ->
+websocket_info({pubsub, Type, Event}, Req, State) ->
 	{reply, {text, jsx:encode(#{ type => Type, content => erlang:iolist_to_binary(io_lib:format("~p", [Event])) })}, Req, State};
 websocket_info(_Message, Req, State) ->
 	{ok, Req, State}.
@@ -93,5 +93,5 @@ handle_client_task(_Message, State) -> {ok, State}.
 ip_to_binary(IP) when is_tuple(IP) andalso size(IP) == 4 -> erlang:list_to_binary(inet_parse:ntoa(IP)).
 
 handle_route_event(Subscriber, Topic, Message) ->
-	Subscriber ! {hot_proxy_event, Topic, Message},
+	Subscriber ! {pubsub, Topic, Message},
 	ok.

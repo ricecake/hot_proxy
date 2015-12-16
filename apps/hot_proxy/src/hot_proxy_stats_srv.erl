@@ -38,7 +38,7 @@ init_tables() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	hot_proxy_event:subscribe([
+	pubsub:subscribe([
 			<<"config.*.host">>,
 			<<"config.*.domain">>
 		], fun(_Subscriber, _From, {Topic, Message}) ->

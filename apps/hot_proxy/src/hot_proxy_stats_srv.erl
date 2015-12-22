@@ -54,7 +54,6 @@ handle_cast({config_change, <<"config.insert.host">>, _Message}, State) ->
 handle_cast({config_change, <<"config.remove.host">>, _Message}, State) ->
 	{noreply, State};
 handle_cast({config_change, <<"config.insert.domain">>, Message}, State) ->
-	io:format("~p~n", [Message]),
 	{noreply, State};
 handle_cast({config_change, <<"config.remove.domain">>, _Message}, State) ->
 	{noreply, State};

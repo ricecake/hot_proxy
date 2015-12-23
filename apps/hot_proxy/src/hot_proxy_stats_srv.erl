@@ -49,11 +49,13 @@ init(_Args) ->
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
 
-handle_cast({config_change, <<"config.insert.host">>, _Message}, State) ->
+handle_cast({config_change, <<"config.insert.host">>, {_Domain, Host}}, State) ->
+	{ok, _PID} = hot_proxy_stats_worker_sup:start_worker(host, Host),
 	{noreply, State};
 handle_cast({config_change, <<"config.remove.host">>, _Message}, State) ->
 	{noreply, State};
-handle_cast({config_change, <<"config.insert.domain">>, Message}, State) ->
+handle_cast({config_change, <<"config.insert.domain">>, {Domain, _Alias, _Hosts}}, State) ->
+	{ok, _PID} = hot_proxy_stats_worker_sup:start_worker(domain, Domain),
 	{noreply, State};
 handle_cast({config_change, <<"config.remove.domain">>, _Message}, State) ->
 	{noreply, State};

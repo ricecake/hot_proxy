@@ -27,7 +27,6 @@ start_link(Args) ->
 %% ------------------------------------------------------------------
 
 init(Args) ->
-	io:format("~p~n", [Args]),
 	{ok, #{}}.
 
 handle_call(_Request, _From, State) ->

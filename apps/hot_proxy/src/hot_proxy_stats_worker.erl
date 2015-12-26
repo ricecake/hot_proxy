@@ -26,8 +26,8 @@ start_link(Args) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init(Args) ->
-	{ok, #{}}.
+init(#{ type := _Type, name := _Name } =Args) ->
+	{ok, Args}.
 
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.

@@ -17,8 +17,8 @@ init(ReqTime, Upstream) ->
 	{ok, Upstream, #{ initiated => ReqTime, tried => [], request => UUID }}.
 
 lookup_domain_name(Domain, Upstream, State) ->
-	{ok, Servers} = hot_proxy_config:get_domain_servers(Domain),
-	{ok, Servers, Upstream, State}.
+	{ok, Root, Servers} = hot_proxy_config:get_domain_servers(Domain),
+	{ok, Servers, Upstream, State#{ root => Root }}.
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};

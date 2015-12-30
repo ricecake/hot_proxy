@@ -55,8 +55,9 @@ init_tables() ->
 	ok.
 
 get_domain_servers(Domain) ->
-	{ok, {Domain, [
-		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- ets:lookup(hot_proxy_config_lookup, Domain)
+	[{_, Root, _} |_] = Results = ets:lookup(hot_proxy_config_lookup, Domain),
+	{ok, Root, {Domain, [
+		RoutingData || {_Domain, _RoutingGroup, RoutingData} <- Results
 	]}}.
 
 list_domains() ->

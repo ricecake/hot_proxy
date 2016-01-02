@@ -22,7 +22,7 @@ lookup_domain_name(Domain, Upstream, State) ->
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};
-checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried, request := UUID } = State) ->
+checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqUUID, tried := Tried, request := UUID, root := Root } = State) ->
 	{{PeerIp, _PeerPort}, Upstream2} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
 	{ok, {Server, _} = Prelim} = case hot_proxy_route_table:check_cache(RequestKey) of
@@ -38,17 +38,17 @@ checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := 
 		{ok, {FinalServer, TTL} = Data} ->
 			ok = hot_proxy_route_table:update_cache(RequestKey, TTL, Data),
 			% Emit connection event including server client and site
-			pubsub:publish(<<"route.checkout">>, {UUID, FinalServer, Domain, PeerIp}),
+			pubsub:publish(<<"route.checkout.", Root/binary>>, {UUID, FinalServer, Domain, PeerIp}),
 			{service, FinalServer, Upstream2, State#{ tried := [FinalServer |Tried] }}
 	end.
 
 service_backend({IP, Port}, Upstream, State) ->
 	{{IP, Port}, Upstream, State}.
 
-checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_], request := UUID } = State) ->
+checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ tried := [Server |_], request := UUID, root := Root } = State) ->
 	% Emit disconnection event including server, client site and phase
 	{{PeerIp, _PeerPort}, _} = cowboyku_req:peer(Upstream),
-	pubsub:publish(<<"route.checkin">>, {UUID, Phase, Server, Domain, PeerIp, ServState}),
+	pubsub:publish(<<"route.checkin.", Root/binary>>, {UUID, Phase, Server, Domain, PeerIp, ServState}),
 	{ok, Upstream, State};
 checkin_service({Domain, _}, _Pick, Phase, ServState, Upstream, #{ request := UUID } = State) ->
 	% Emit disconnection event including server, client site and phase

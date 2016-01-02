@@ -40,7 +40,7 @@
   1},
  {<<"pubsub">>,
   {git,"https://github.com/ricecake/pubsub",
-       {ref,"4d32ac92fdd8e8cf6bdcf452c640a8b807d7177a"}},
+       {ref,"9d46204eef64dc7e161df22b2e096f0b159daa8f"}},
   0},
  {<<"quickrand">>,
   {git,"https://github.com/okeuday/quickrand.git",

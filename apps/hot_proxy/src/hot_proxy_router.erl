@@ -18,7 +18,8 @@ init(ReqTime, Upstream) ->
 
 lookup_domain_name(Domain, Upstream, State) ->
 	{ok, Root, Servers} = hot_proxy_config:get_domain_servers(Domain),
-	{ok, Servers, Upstream, State#{ root => Root }}.
+        EscapedRoot = binary:replace(Root, <<$.>>, <<$+>>, [global]),
+	{ok, Servers, Upstream, State#{ root => EscapedRoot }}.
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};

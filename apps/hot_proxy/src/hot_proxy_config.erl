@@ -10,8 +10,8 @@
 -export([
 	init_tables/0,
 	get_domain_servers/1,
-        list_domains/0,
-        get_domain/1,
+	list_domains/0,
+	get_domain/1,
 	insert_domain/3,
 	remove_domain/1,
 	insert_alias/2,
@@ -26,8 +26,14 @@
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([
+	init/1,
+	handle_call/3,
+	handle_cast/2,
+	handle_info/2,
+	terminate/2,
+	code_change/3
+]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -38,7 +44,7 @@ generate_test_data() ->
 	insert_domain(<<"hot-proxy.com">>, [<<N>> || N <- lists:seq($0,$9)], [{{127,0,0,1}, Port, 5, 1} || Port <- lists:seq(8081, 8083)]).
 
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init_tables() ->
 	ets:new(?MODULE, [

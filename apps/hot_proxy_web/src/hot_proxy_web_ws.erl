@@ -14,7 +14,7 @@
 %% ===================================================================
 
 init(Req, Opts) when is_map(Opts)->
-	pubsub:subscribe([<<"#">>], fun(Subscriber, _From, {Topic, Message}) ->
+	pubsub:subscribe([<<"web.event">>], fun(Subscriber, _From, {_, #{ topic := Topic } = Message}) ->
 		handle_route_event(Subscriber, Topic, Message)
 	end),
 	{cowboy_websocket, Req, Opts}.

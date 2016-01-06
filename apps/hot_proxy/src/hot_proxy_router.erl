@@ -23,7 +23,7 @@ lookup_domain_name(Domain, Upstream, State) ->
 
 checkout_service({_Domain, []}, Upstream, State) ->
 	{error, unhandled_domain, Upstream, State};
-checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqUUID, tried := Tried, request := UUID, root := Root } = State) ->
+checkout_service({Domain, Servers}, Upstream, #{ initiated := ReqTime, tried := Tried, request := UUID, root := Root } = State) ->
 	{{PeerIp, _PeerPort}, Upstream2} = cowboyku_req:peer(Upstream),
 	RequestKey = {Domain, PeerIp},
 	{ok, {Server, _} = Prelim} = case hot_proxy_route_table:check_cache(RequestKey) of

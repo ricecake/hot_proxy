@@ -26,7 +26,9 @@ start_link(Args) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init(#{ type := _Type, name := _Name } =Args) ->
+init(#{ type := _Type, name := Name } =Args) ->
+	Route = pubsub:route_escape(Name)
+	pubsub:subscribe([<<"route.checkout.", Route/binary>>]),
 	{ok, Args}.
 
 handle_call(_Request, _From, State) ->
